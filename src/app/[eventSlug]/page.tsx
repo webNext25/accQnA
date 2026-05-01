@@ -28,7 +28,7 @@ export default async function AttendeePage({ params }: AttendeePageProps) {
 
   const event = eventData as Event;
 
-  const { data: questionData } = await supabase
+  const { data: questionData, error: questionError } = await supabase
     .from("questions")
     .select("*")
     .eq("event_id", event.id)
@@ -37,6 +37,20 @@ export default async function AttendeePage({ params }: AttendeePageProps) {
     .order("created_at", { ascending: false });
 
   const initialQuestions = sortQuestions((questionData ?? []) as Question[]);
+
+  if (questionError) {
+    return (
+      <main className="min-h-screen bg-slate-50">
+        <EventHero event={event} />
+        <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
+          <EmptyState
+            title="Questions could not load"
+            message="Refresh the page in a moment to see the latest Q&A activity."
+          />
+        </div>
+      </main>
+    );
+  }
 
   if (!event.is_open) {
     return (

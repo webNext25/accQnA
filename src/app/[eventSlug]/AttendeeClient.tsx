@@ -130,7 +130,7 @@ export function AttendeeClient({
 
         setBody("");
         setQuestions((currentQuestions) =>
-          sortQuestions([result.data, ...currentQuestions]),
+          upsertQuestionById(currentQuestions, result.data),
         );
       } catch {
         setError("We could not post your question. Please try again.");
@@ -153,7 +153,7 @@ export function AttendeeClient({
 
     startTransition(async () => {
       try {
-        const voterId = getVoterId();
+        const voterId = safeGetVoterId();
         const result = await upvoteQuestion({
           eventId: event.id,
           eventSlug: event.slug,
@@ -166,22 +166,10 @@ export function AttendeeClient({
           return;
         }
 
-        markVotedLocally(questionId);
+        safeMarkVotedLocally(questionId);
         setSessionVotedQuestionIds((currentIds) =>
           new Set(currentIds).add(questionId),
         );
-
-        if (!result.data.alreadyVoted) {
-          setQuestions((currentQuestions) =>
-            sortQuestions(
-              currentQuestions.map((question) =>
-                question.id === questionId
-                  ? { ...question, vote_count: question.vote_count + 1 }
-                  : question,
-              ),
-            ),
-          );
-        }
       } catch {
         setError("We could not record your upvote. Please try again.");
       } finally {
@@ -355,8 +343,47 @@ function readVotedQuestionIds(questionIds: string[]): string {
     return "";
   }
 
-  return questionIds
-    .filter((questionId) => hasVotedLocally(questionId))
-    .sort()
-    .join("|");
+  try {
+    return questionIds
+      .filter((questionId) => hasVotedLocally(questionId))
+      .sort()
+      .join("|");
+  } catch {
+    return "";
+  }
+}
+
+function safeGetVoterId(): string {
+  try {
+    return getVoterId();
+  } catch {
+    return crypto.randomUUID();
+  }
+}
+
+function safeMarkVotedLocally(questionId: string): void {
+  try {
+    markVotedLocally(questionId);
+  } catch {
+    return;
+  }
+}
+
+function upsertQuestionById(
+  currentQuestions: Question[],
+  nextQuestion: Question,
+): Question[] {
+  const existingQuestion = currentQuestions.some(
+    (question) => question.id === nextQuestion.id,
+  );
+
+  if (!existingQuestion) {
+    return sortQuestions([nextQuestion, ...currentQuestions]);
+  }
+
+  return sortQuestions(
+    currentQuestions.map((question) =>
+      question.id === nextQuestion.id ? nextQuestion : question,
+    ),
+  );
 }
