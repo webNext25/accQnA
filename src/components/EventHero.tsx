@@ -22,11 +22,11 @@ export function EventHero({ event, compact = false }: EventHeroProps) {
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/75">
           Alpha Colors Live
         </p>
-        <h1 className="mt-3 max-w-2xl text-4xl font-black leading-[0.95] tracking-normal text-balance sm:text-5xl">
+        <h1 className="mt-3 max-w-2xl text-4xl font-black leading-[0.95] tracking-normal text-balance [overflow-wrap:anywhere] sm:text-5xl">
           {event.title}
         </h1>
         {event.subtitle ? (
-          <p className="mt-4 max-w-xl text-base font-medium leading-7 text-white/80 sm:text-lg">
+          <p className="mt-4 max-w-xl text-base font-medium leading-7 text-white/80 [overflow-wrap:anywhere] sm:text-lg">
             {event.subtitle}
           </p>
         ) : null}

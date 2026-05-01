@@ -23,6 +23,11 @@ export function QuestionCard({
       ? "Anonymous"
       : question.author_name;
   const upvoteDisabled = disabled || voted || !onUpvote;
+  const handleDelete = () => {
+    if (window.confirm("Delete this question?")) {
+      onDelete?.(question.id);
+    }
+  };
 
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-950/[0.03]">
@@ -33,7 +38,7 @@ export function QuestionCard({
           disabled={upvoteDisabled}
           aria-pressed={voted}
           aria-label="Upvote question"
-          className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-900 transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-900 transition hover:border-slate-300 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ArrowBigUp className="h-5 w-5" aria-hidden="true" />
           <span className="text-sm font-black leading-none">
@@ -53,9 +58,9 @@ export function QuestionCard({
         <div className="mt-3 flex justify-end">
           <button
             type="button"
-            onClick={() => onDelete(question.id)}
+            onClick={handleDelete}
             disabled={disabled}
-            className="rounded-md px-2 py-1 text-sm font-bold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md px-2 py-1 text-sm font-bold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Delete
           </button>
