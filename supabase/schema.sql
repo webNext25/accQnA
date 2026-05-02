@@ -36,6 +36,22 @@ create index if not exists questions_event_rank_idx
   on public.questions (event_id, deleted_at, vote_count desc, created_at desc);
 create index if not exists question_votes_event_idx on public.question_votes (event_id);
 
+alter table public.events enable row level security;
+alter table public.questions enable row level security;
+alter table public.question_votes enable row level security;
+
+drop policy if exists "Public can read events" on public.events;
+create policy "Public can read events"
+on public.events for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "Public can read visible questions" on public.questions;
+create policy "Public can read visible questions"
+on public.questions for select
+to anon, authenticated
+using (deleted_at is null);
+
 create or replace function public.set_updated_at()
 returns trigger as $$
 begin

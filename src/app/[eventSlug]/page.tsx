@@ -52,19 +52,5 @@ export default async function AttendeePage({ params }: AttendeePageProps) {
     );
   }
 
-  if (!event.is_open) {
-    return (
-      <main className="min-h-screen bg-slate-50">
-        <EventHero event={event} />
-        <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
-          <EmptyState
-            title="This Q&A is closed"
-            message="Thanks for joining Alpha Colors Live. Question submissions and voting are no longer open."
-          />
-        </div>
-      </main>
-    );
-  }
-
   return <AttendeeClient event={event} initialQuestions={initialQuestions} />;
 }
