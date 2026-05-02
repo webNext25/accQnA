@@ -15,6 +15,10 @@ type PresenterClientProps = {
   questionLoadError?: string | null;
 };
 
+type PendingQuestionChange =
+  | { type: "change"; question: Question }
+  | { type: "delete"; questionId: string };
+
 export function PresenterClient({
   event: initialEvent,
   initialQuestions,
@@ -33,20 +37,72 @@ export function PresenterClient({
 
   useEffect(() => {
     const supabase = createBrowserSupabase();
+    let cancelled = false;
+    let snapshotReconciled = false;
+    const pendingChanges: PendingQuestionChange[] = [];
 
-    return subscribeToEvent(supabase, event.id, {
+    const applyChange = (change: PendingQuestionChange) => {
+      setQuestions((currentQuestions) =>
+        applyPendingQuestionChange(currentQuestions, change),
+      );
+    };
+
+    const unsubscribe = subscribeToEvent(supabase, event.id, {
       onQuestionChange: (question) => {
-        setQuestions((currentQuestions) =>
-          upsertQuestionById(currentQuestions, question),
-        );
+        if (!snapshotReconciled) {
+          pendingChanges.push({ type: "change", question });
+          return;
+        }
+
+        applyChange({ type: "change", question });
       },
       onQuestionDelete: (questionId) => {
-        setQuestions((currentQuestions) =>
-          currentQuestions.filter((question) => question.id !== questionId),
-        );
+        if (!snapshotReconciled) {
+          pendingChanges.push({ type: "delete", questionId });
+          return;
+        }
+
+        applyChange({ type: "delete", questionId });
       },
       onEventChange: setEvent,
     });
+
+    void reconcileQuestionSnapshot();
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+
+    async function reconcileQuestionSnapshot() {
+      const { data, error } = await supabase
+        .from("questions")
+        .select("*")
+        .eq("event_id", event.id)
+        .is("deleted_at", null)
+        .order("vote_count", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      if (cancelled) {
+        return;
+      }
+
+      snapshotReconciled = true;
+
+      if (error) {
+        setQuestions((currentQuestions) =>
+          applyPendingQuestionChanges(currentQuestions, pendingChanges),
+        );
+        return;
+      }
+
+      setQuestions(
+        applyPendingQuestionChanges(
+          sortQuestions((data ?? []) as Question[]),
+          pendingChanges,
+        ),
+      );
+    }
   }, [event.id]);
 
   return (
@@ -132,21 +188,21 @@ export function PresenterClient({
               </div>
             </div>
           ) : (
-            <div className="grid flex-1 auto-rows-fr gap-3 lg:gap-4">
+            <div className="grid flex-1 auto-rows-[minmax(0,1fr)] gap-3 lg:gap-4">
               {topQuestions.map((question, index) => (
                 <article
                   key={question.id}
-                  className="grid min-h-0 grid-cols-[3rem_minmax(0,1fr)_4.75rem] items-center gap-3 rounded-lg border border-white/18 bg-white/92 px-4 py-3 text-slate-950 shadow-2xl shadow-slate-950/25 sm:grid-cols-[4rem_minmax(0,1fr)_6rem] sm:gap-4 sm:px-5 lg:px-6"
+                  className="grid min-h-28 grid-cols-[3rem_minmax(0,1fr)_4.75rem] items-center gap-3 overflow-hidden rounded-lg border border-white/18 bg-white/92 px-4 py-3 text-slate-950 shadow-2xl shadow-slate-950/25 sm:min-h-32 sm:grid-cols-[4rem_minmax(0,1fr)_6rem] sm:gap-4 sm:px-5 lg:min-h-36 lg:px-6"
                 >
                   <div className="flex aspect-square h-11 items-center justify-center rounded-lg bg-slate-950 text-xl font-black leading-none text-white sm:h-14 sm:text-2xl">
                     {index + 1}
                   </div>
 
-                  <div className="min-w-0">
-                    <p className="text-xl font-black leading-snug [overflow-wrap:anywhere] sm:text-2xl lg:text-3xl">
+                  <div className="min-w-0 overflow-hidden">
+                    <p className="line-clamp-3 text-lg font-black leading-snug break-words [overflow-wrap:anywhere] sm:text-xl lg:text-2xl xl:text-3xl">
                       {question.body}
                     </p>
-                    <p className="mt-2 text-sm font-bold text-slate-500 [overflow-wrap:anywhere] sm:text-base">
+                    <p className="mt-2 truncate text-sm font-bold text-slate-500 [overflow-wrap:anywhere] sm:text-base">
                       {question.is_anonymous || !question.author_name
                         ? "Anonymous"
                         : question.author_name}
@@ -207,4 +263,24 @@ function upsertQuestionById(
       question.id === nextQuestion.id ? nextQuestion : question,
     ),
   );
+}
+
+function applyPendingQuestionChange(
+  currentQuestions: Question[],
+  change: PendingQuestionChange,
+): Question[] {
+  if (change.type === "delete") {
+    return currentQuestions.filter(
+      (question) => question.id !== change.questionId,
+    );
+  }
+
+  return upsertQuestionById(currentQuestions, change.question);
+}
+
+function applyPendingQuestionChanges(
+  currentQuestions: Question[],
+  changes: PendingQuestionChange[],
+): Question[] {
+  return changes.reduce(applyPendingQuestionChange, currentQuestions);
 }
