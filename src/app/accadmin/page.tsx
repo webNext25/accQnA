@@ -5,6 +5,8 @@ import type { Event, Question } from "@/lib/qa/types";
 
 import { AdminClient } from "./AdminClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
   const supabase = createServerSupabase();
 
