@@ -10,6 +10,7 @@ const question = (overrides: Partial<Question>): Question => ({
   author_name: null,
   is_anonymous: true,
   vote_count: 0,
+  is_answered: false,
   created_at: "2026-01-01T00:00:00.000Z",
   deleted_at: null,
   ...overrides,

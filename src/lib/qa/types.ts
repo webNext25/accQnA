@@ -16,6 +16,7 @@ export type Question = {
   author_name: string | null;
   is_anonymous: boolean;
   vote_count: number;
+  is_answered: boolean;
   created_at: string;
   deleted_at: string | null;
 };

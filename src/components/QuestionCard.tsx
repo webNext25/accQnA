@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowBigUp } from "lucide-react";
+import { ArrowBigUp, CheckCircle2 } from "lucide-react";
 import type { Question } from "@/lib/qa/types";
 
 type QuestionCardProps = {
@@ -9,6 +9,7 @@ type QuestionCardProps = {
   disabled?: boolean;
   onUpvote?: (questionId: string) => void;
   onDelete?: (questionId: string) => void;
+  onToggleAnswered?: (questionId: string, isAnswered: boolean) => void;
 };
 
 export function QuestionCard({
@@ -17,6 +18,7 @@ export function QuestionCard({
   disabled = false,
   onUpvote,
   onDelete,
+  onToggleAnswered,
 }: QuestionCardProps) {
   const author =
     question.is_anonymous || !question.author_name
@@ -50,20 +52,43 @@ export function QuestionCard({
           <p className="[overflow-wrap:anywhere] text-base font-bold leading-snug text-slate-950">
             {question.body}
           </p>
-          <p className="mt-2 text-sm font-medium text-slate-500">{author}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-500">
+            <span>{author}</span>
+            {question.is_answered ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-black text-emerald-700">
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                Answered
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {onDelete ? (
-        <div className="mt-3 flex justify-end">
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={disabled}
-            className="rounded-md px-2 py-1 text-sm font-bold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Delete
-          </button>
+      {onDelete || onToggleAnswered ? (
+        <div className="mt-3 flex flex-wrap justify-end gap-2">
+          {onToggleAnswered ? (
+            <button
+              type="button"
+              onClick={() =>
+                onToggleAnswered(question.id, !question.is_answered)
+              }
+              disabled={disabled}
+              className="rounded-md px-2 py-1 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {question.is_answered ? "Reopen" : "Mark answered"}
+            </button>
+          ) : null}
+
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={disabled}
+              className="rounded-md px-2 py-1 text-sm font-bold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Delete
+            </button>
+          ) : null}
         </div>
       ) : null}
     </article>

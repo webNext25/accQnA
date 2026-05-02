@@ -88,15 +88,36 @@ export async function deleteQuestion(
   questionId: string,
 ): Promise<ActionResult> {
   const supabase = createServerSupabase();
-  const { error } = await supabase
-    .from("questions")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", questionId);
+  const { error } = await supabase.from("questions").delete().eq("id", questionId);
 
   if (error) {
     return {
       ok: false,
       error: "We could not delete that question. Please try again.",
+    };
+  }
+
+  revalidatePath("/accadmin");
+
+  return { ok: true, data: undefined };
+}
+
+export async function setQuestionAnswered(
+  questionId: string,
+  isAnswered: boolean,
+): Promise<ActionResult> {
+  const supabase = createServerSupabase();
+  const { error } = await supabase
+    .from("questions")
+    .update({ is_answered: isAnswered })
+    .eq("id", questionId);
+
+  if (error) {
+    return {
+      ok: false,
+      error: isAnswered
+        ? "We could not mark that question answered. Please try again."
+        : "We could not reopen that question. Please try again.",
     };
   }
 

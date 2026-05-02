@@ -18,9 +18,13 @@ create table if not exists public.questions (
   author_name text,
   is_anonymous boolean not null default true,
   vote_count integer not null default 0 check (vote_count >= 0),
+  is_answered boolean not null default false,
   created_at timestamptz not null default now(),
   deleted_at timestamptz
 );
+
+alter table public.questions
+add column if not exists is_answered boolean not null default false;
 
 create table if not exists public.question_votes (
   id uuid primary key default gen_random_uuid(),

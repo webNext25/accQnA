@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { sortQuestions } from "@/lib/qa/sort";
 import type { Event, Question } from "@/lib/qa/types";
@@ -193,13 +193,29 @@ export function PresenterClient({
               {topQuestions.map((question, index) => (
                 <article
                   key={question.id}
-                  className="grid min-h-28 grid-cols-[3rem_minmax(0,1fr)_4.75rem] items-center gap-3 overflow-hidden rounded-lg border border-white/18 bg-white/92 px-4 py-3 text-slate-950 shadow-2xl shadow-slate-950/25 sm:min-h-32 sm:grid-cols-[4rem_minmax(0,1fr)_6rem] sm:gap-4 sm:px-5 lg:min-h-36 lg:px-6"
+                  className={`grid min-h-28 grid-cols-[3rem_minmax(0,1fr)_4.75rem] items-center gap-3 overflow-hidden rounded-lg border px-4 py-3 shadow-2xl shadow-slate-950/25 transition sm:min-h-32 sm:grid-cols-[4rem_minmax(0,1fr)_6rem] sm:gap-4 sm:px-5 lg:min-h-36 lg:px-6 ${
+                    question.is_answered
+                      ? "border-emerald-200/65 bg-slate-200/90 text-slate-500"
+                      : "border-white/18 bg-white/92 text-slate-950"
+                  }`}
                 >
-                  <div className="flex aspect-square h-11 items-center justify-center rounded-lg bg-slate-950 text-xl font-black leading-none text-white sm:h-14 sm:text-2xl">
+                  <div
+                    className={`flex aspect-square h-11 items-center justify-center rounded-lg text-xl font-black leading-none sm:h-14 sm:text-2xl ${
+                      question.is_answered
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-950 text-white"
+                    }`}
+                  >
                     {index + 1}
                   </div>
 
                   <div className="min-w-0 overflow-hidden">
+                    {question.is_answered ? (
+                      <span className="mb-2 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-black uppercase tracking-normal text-emerald-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        Answered
+                      </span>
+                    ) : null}
                     <p className="line-clamp-3 text-lg font-black leading-snug break-words [overflow-wrap:anywhere] sm:text-xl lg:text-2xl xl:text-3xl">
                       {question.body}
                     </p>

@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent, ReactNode } from "react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   ExternalLink,
   Link as LinkIcon,
@@ -12,9 +12,17 @@ import {
 
 import { EmptyState } from "@/components/EmptyState";
 import { QuestionCard } from "@/components/QuestionCard";
+import { sortQuestions } from "@/lib/qa/sort";
+import { subscribeToEvent } from "@/lib/qa/realtime";
 import type { Event, Question } from "@/lib/qa/types";
+import { createBrowserSupabase } from "@/lib/supabase/browser";
 
-import { createEvent, deleteQuestion, setEventOpen } from "./actions";
+import {
+  createEvent,
+  deleteQuestion,
+  setEventOpen,
+  setQuestionAnswered,
+} from "./actions";
 
 type AdminClientProps = {
   initialEvents: Event[];
@@ -44,11 +52,19 @@ export function AdminClient({
   const [form, setForm] = useState<EventForm>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const eventSubscriptionKey = useMemo(
+    () =>
+      events
+        .map((event) => event.id)
+        .sort()
+        .join("|"),
+    [events],
+  );
 
   const questionsByEvent = useMemo(() => {
     const groupedQuestions = new Map<string, Question[]>();
 
-    for (const question of questions) {
+    for (const question of sortQuestions(questions)) {
       const eventQuestions = groupedQuestions.get(question.event_id) ?? [];
       eventQuestions.push(question);
       groupedQuestions.set(question.event_id, eventQuestions);
@@ -59,6 +75,40 @@ export function AdminClient({
 
   const totalQuestionCount = questions.length;
   const openEventCount = events.filter((event) => event.is_open).length;
+
+  useEffect(() => {
+    const supabase = createBrowserSupabase();
+    const eventIds = eventSubscriptionKey
+      ? eventSubscriptionKey.split("|")
+      : [];
+    const unsubscribes = eventIds.map((eventId) =>
+      subscribeToEvent(supabase, eventId, {
+        onQuestionChange: (question) => {
+          setQuestions((currentQuestions) =>
+            upsertQuestionById(currentQuestions, question),
+          );
+        },
+        onQuestionDelete: (questionId) => {
+          setQuestions((currentQuestions) =>
+            currentQuestions.filter((question) => question.id !== questionId),
+          );
+        },
+        onEventChange: (nextEvent) => {
+          setEvents((currentEvents) =>
+            currentEvents.map((event) =>
+              event.id === nextEvent.id ? nextEvent : event,
+            ),
+          );
+        },
+      }),
+    );
+
+    return () => {
+      for (const unsubscribe of unsubscribes) {
+        unsubscribe();
+      }
+    };
+  }, [eventSubscriptionKey]);
 
   const handleCreate = (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
@@ -121,6 +171,31 @@ export function AdminClient({
         );
       } catch {
         setError("We could not delete that question. Please try again.");
+      }
+    });
+  };
+
+  const handleToggleAnswered = (questionId: string, isAnswered: boolean) => {
+    setError(null);
+
+    startTransition(async () => {
+      try {
+        const result = await setQuestionAnswered(questionId, isAnswered);
+
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+
+        setQuestions((currentQuestions) =>
+          currentQuestions.map((question) =>
+            question.id === questionId
+              ? { ...question, is_answered: isAnswered }
+              : question,
+          ),
+        );
+      } catch {
+        setError("We could not update that question. Please try again.");
       }
     });
   };
@@ -316,6 +391,7 @@ export function AdminClient({
                             question={question}
                             disabled={isPending}
                             onDelete={handleDeleteQuestion}
+                            onToggleAnswered={handleToggleAnswered}
                           />
                         ))
                       )}
@@ -395,3 +471,22 @@ function LinkButton({ href, label }: { href: string; label: string }) {
 
 const inputClassName =
   "h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-base font-medium text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/10";
+
+function upsertQuestionById(
+  currentQuestions: Question[],
+  nextQuestion: Question,
+): Question[] {
+  const existingQuestion = currentQuestions.some(
+    (question) => question.id === nextQuestion.id,
+  );
+
+  if (!existingQuestion) {
+    return sortQuestions([nextQuestion, ...currentQuestions]);
+  }
+
+  return sortQuestions(
+    currentQuestions.map((question) =>
+      question.id === nextQuestion.id ? nextQuestion : question,
+    ),
+  );
+}
