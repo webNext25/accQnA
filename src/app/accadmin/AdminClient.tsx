@@ -45,8 +45,6 @@ export function AdminClient({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const origin =
-    typeof window === "undefined" ? "" : window.location.origin;
   const questionsByEvent = useMemo(() => {
     const groupedQuestions = new Map<string, Question[]>();
 
@@ -246,8 +244,8 @@ export function AdminClient({
             ) : (
               events.map((event) => {
                 const eventQuestions = questionsByEvent.get(event.id) ?? [];
-                const attendeeUrl = `${origin}/${event.slug}`;
-                const presenterUrl = `${origin}/${event.slug}/present`;
+                const attendeeUrl = `/${event.slug}`;
+                const presenterUrl = `/${event.slug}/present`;
 
                 return (
                   <article
