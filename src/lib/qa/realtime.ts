@@ -81,6 +81,7 @@ function isQuestion(value: Partial<Question>): value is Question {
     typeof value.is_anonymous === "boolean" &&
     typeof value.vote_count === "number" &&
     typeof value.is_answered === "boolean" &&
+    typeof value.is_pinned === "boolean" &&
     typeof value.created_at === "string" &&
     (typeof value.author_name === "string" || value.author_name === null) &&
     (typeof value.deleted_at === "string" || value.deleted_at === null)

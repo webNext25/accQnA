@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Pin } from "lucide-react";
 
 import { sortQuestions } from "@/lib/qa/sort";
 import type { Event, Question } from "@/lib/qa/types";
@@ -214,6 +214,12 @@ export function PresenterClient({
                       <span className="mb-2 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-black uppercase tracking-normal text-emerald-700">
                         <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                         Answered
+                      </span>
+                    ) : null}
+                    {question.is_pinned ? (
+                      <span className="mb-2 ml-2 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-black uppercase tracking-normal text-amber-700">
+                        <Pin className="h-3.5 w-3.5" aria-hidden="true" />
+                        Active
                       </span>
                     ) : null}
                     <p className="line-clamp-3 text-lg font-black leading-snug break-words [overflow-wrap:anywhere] sm:text-xl lg:text-2xl xl:text-3xl">

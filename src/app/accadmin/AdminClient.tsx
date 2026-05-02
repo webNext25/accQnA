@@ -22,6 +22,7 @@ import {
   deleteQuestion,
   setEventOpen,
   setQuestionAnswered,
+  setQuestionPinned,
 } from "./actions";
 
 type AdminClientProps = {
@@ -194,6 +195,47 @@ export function AdminClient({
               : question,
           ),
         );
+      } catch {
+        setError("We could not update that question. Please try again.");
+      }
+    });
+  };
+
+  const handleTogglePinned = (questionId: string, isPinned: boolean) => {
+    setError(null);
+
+    startTransition(async () => {
+      try {
+        const result = await setQuestionPinned(questionId, isPinned);
+
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+
+        setQuestions((currentQuestions) => {
+          const targetQuestion = currentQuestions.find(
+            (question) => question.id === questionId,
+          );
+
+          if (!targetQuestion) {
+            return currentQuestions;
+          }
+
+          return sortQuestions(
+            currentQuestions.map((question) => {
+              if (question.id === questionId) {
+                return { ...question, is_pinned: isPinned };
+              }
+
+              if (isPinned && question.event_id === targetQuestion.event_id) {
+                return { ...question, is_pinned: false };
+              }
+
+              return question;
+            }),
+          );
+        });
       } catch {
         setError("We could not update that question. Please try again.");
       }
@@ -392,6 +434,7 @@ export function AdminClient({
                             disabled={isPending}
                             onDelete={handleDeleteQuestion}
                             onToggleAnswered={handleToggleAnswered}
+                            onTogglePinned={handleTogglePinned}
                           />
                         ))
                       )}

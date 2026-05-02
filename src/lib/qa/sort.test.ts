@@ -11,6 +11,7 @@ const question = (overrides: Partial<Question>): Question => ({
   is_anonymous: true,
   vote_count: 0,
   is_answered: false,
+  is_pinned: false,
   created_at: "2026-01-01T00:00:00.000Z",
   deleted_at: null,
   ...overrides,
@@ -71,5 +72,17 @@ describe("sortQuestions", () => {
 
     expect(sorted).not.toBe(questions);
     expect(questions.map((item) => item.id)).toEqual(originalOrder);
+  });
+
+  test("keeps pinned questions above voted questions", () => {
+    const questions = [
+      question({ id: "popular", vote_count: 10 }),
+      question({ id: "pinned", is_pinned: true, vote_count: 1 }),
+    ];
+
+    expect(sortQuestions(questions).map((item) => item.id)).toEqual([
+      "pinned",
+      "popular",
+    ]);
   });
 });

@@ -19,12 +19,16 @@ create table if not exists public.questions (
   is_anonymous boolean not null default true,
   vote_count integer not null default 0 check (vote_count >= 0),
   is_answered boolean not null default false,
+  is_pinned boolean not null default false,
   created_at timestamptz not null default now(),
   deleted_at timestamptz
 );
 
 alter table public.questions
 add column if not exists is_answered boolean not null default false;
+
+alter table public.questions
+add column if not exists is_pinned boolean not null default false;
 
 create table if not exists public.question_votes (
   id uuid primary key default gen_random_uuid(),
@@ -38,6 +42,8 @@ create table if not exists public.question_votes (
 create index if not exists events_slug_idx on public.events (slug);
 create index if not exists questions_event_rank_idx
   on public.questions (event_id, deleted_at, vote_count desc, created_at desc);
+create index if not exists questions_event_pinned_idx
+  on public.questions (event_id, is_pinned desc, deleted_at);
 create index if not exists question_votes_event_idx on public.question_votes (event_id);
 
 alter table public.events enable row level security;

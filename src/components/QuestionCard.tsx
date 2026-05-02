@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowBigUp, CheckCircle2 } from "lucide-react";
+import { ArrowBigUp, CheckCircle2, Pin } from "lucide-react";
 import type { Question } from "@/lib/qa/types";
 
 type QuestionCardProps = {
@@ -10,6 +10,7 @@ type QuestionCardProps = {
   onUpvote?: (questionId: string) => void;
   onDelete?: (questionId: string) => void;
   onToggleAnswered?: (questionId: string, isAnswered: boolean) => void;
+  onTogglePinned?: (questionId: string, isPinned: boolean) => void;
 };
 
 export function QuestionCard({
@@ -19,6 +20,7 @@ export function QuestionCard({
   onUpvote,
   onDelete,
   onToggleAnswered,
+  onTogglePinned,
 }: QuestionCardProps) {
   const author =
     question.is_anonymous || !question.author_name
@@ -60,12 +62,29 @@ export function QuestionCard({
                 Answered
               </span>
             ) : null}
+            {question.is_pinned ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-black text-amber-700">
+                <Pin className="h-3.5 w-3.5" aria-hidden="true" />
+                Pinned
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
 
-      {onDelete || onToggleAnswered ? (
+      {onDelete || onToggleAnswered || onTogglePinned ? (
         <div className="mt-3 flex flex-wrap justify-end gap-2">
+          {onTogglePinned ? (
+            <button
+              type="button"
+              onClick={() => onTogglePinned(question.id, !question.is_pinned)}
+              disabled={disabled}
+              className="rounded-md px-2 py-1 text-sm font-bold text-amber-700 transition hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {question.is_pinned ? "Unpin" : "Pin active"}
+            </button>
+          ) : null}
+
           {onToggleAnswered ? (
             <button
               type="button"

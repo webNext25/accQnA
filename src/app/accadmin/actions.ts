@@ -126,6 +126,72 @@ export async function setQuestionAnswered(
   return { ok: true, data: undefined };
 }
 
+export async function setQuestionPinned(
+  questionId: string,
+  isPinned: boolean,
+): Promise<ActionResult> {
+  const supabase = createServerSupabase();
+
+  if (!isPinned) {
+    const { error } = await supabase
+      .from("questions")
+      .update({ is_pinned: false })
+      .eq("id", questionId);
+
+    if (error) {
+      return {
+        ok: false,
+        error: "We could not unpin that question. Please try again.",
+      };
+    }
+
+    revalidatePath("/accadmin");
+    return { ok: true, data: undefined };
+  }
+
+  const { data: question, error: questionError } = await supabase
+    .from("questions")
+    .select("event_id")
+    .eq("id", questionId)
+    .single();
+
+  if (questionError || !question) {
+    return {
+      ok: false,
+      error: "We could not pin that question. Please try again.",
+    };
+  }
+
+  const { error: clearError } = await supabase
+    .from("questions")
+    .update({ is_pinned: false })
+    .eq("event_id", question.event_id)
+    .eq("is_pinned", true);
+
+  if (clearError) {
+    return {
+      ok: false,
+      error: "We could not pin that question. Please try again.",
+    };
+  }
+
+  const { error: pinError } = await supabase
+    .from("questions")
+    .update({ is_pinned: true })
+    .eq("id", questionId);
+
+  if (pinError) {
+    return {
+      ok: false,
+      error: "We could not pin that question. Please try again.",
+    };
+  }
+
+  revalidatePath("/accadmin");
+
+  return { ok: true, data: undefined };
+}
+
 function blankToNull(value: string): string | null {
   const trimmedValue = value.trim();
   return trimmedValue ? trimmedValue : null;

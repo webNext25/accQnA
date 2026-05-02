@@ -17,6 +17,7 @@ export type Question = {
   is_anonymous: boolean;
   vote_count: number;
   is_answered: boolean;
+  is_pinned: boolean;
   created_at: string;
   deleted_at: string | null;
 };
