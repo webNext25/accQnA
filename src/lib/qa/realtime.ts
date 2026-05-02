@@ -11,6 +11,7 @@ type EventHandlers = {
   onQuestionChange: (question: Question) => void;
   onQuestionDelete: (questionId: string) => void;
   onEventChange?: (event: Event) => void;
+  onSubscribed?: () => void;
 };
 
 export function subscribeToEvent(
@@ -61,7 +62,11 @@ export function subscribeToEvent(
         }
       },
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        handlers.onSubscribed?.();
+      }
+    });
 
   return () => {
     void supabase.removeChannel(channel as RealtimeChannel);

@@ -65,9 +65,10 @@ export function PresenterClient({
         applyChange({ type: "delete", questionId });
       },
       onEventChange: setEvent,
+      onSubscribed: () => {
+        void reconcileQuestionSnapshot();
+      },
     });
-
-    void reconcileQuestionSnapshot();
 
     return () => {
       cancelled = true;
