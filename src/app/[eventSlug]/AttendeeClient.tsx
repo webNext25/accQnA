@@ -42,6 +42,7 @@ export function AttendeeClient({
   const [authorName, setAuthorName] = useState("");
   const [anonymous, setAnonymous] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [sessionVotedQuestionIds, setSessionVotedQuestionIds] = useState<
     Set<string>
   >(() => new Set());
@@ -113,6 +114,7 @@ export function AttendeeClient({
     }
 
     setError(null);
+    setStatus(null);
     startTransition(async () => {
       try {
         const result = await submitQuestion({
@@ -129,6 +131,7 @@ export function AttendeeClient({
         }
 
         setBody("");
+        setStatus("Question sent. It is live now.");
         setQuestions((currentQuestions) =>
           upsertQuestionById(currentQuestions, result.data),
         );
@@ -187,7 +190,7 @@ export function AttendeeClient({
       <EventHero event={event} />
 
       <div className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start lg:py-8">
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-950/[0.03] sm:p-5">
+        <section className="order-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-950/[0.03] sm:p-5 lg:order-1">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-xl font-black leading-tight text-slate-950">
@@ -223,8 +226,12 @@ export function AttendeeClient({
                 </label>
                 <textarea
                   id="question-body"
+                  name="question"
                   value={body}
-                  onChange={(event) => setBody(event.target.value)}
+                  onChange={(event) => {
+                    setBody(event.target.value);
+                    setStatus(null);
+                  }}
                   maxLength={280}
                   rows={5}
                   placeholder="What should the speaker answer next?"
@@ -273,6 +280,8 @@ export function AttendeeClient({
                   </label>
                   <input
                     id="author-name"
+                    name="authorName"
+                    autoComplete="name"
                     value={authorName}
                     onChange={(event) => setAuthorName(event.target.value)}
                     maxLength={40}
@@ -283,8 +292,20 @@ export function AttendeeClient({
               ) : null}
 
               {error ? (
-                <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">
+                <p
+                  aria-live="polite"
+                  className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700"
+                >
                   {error}
+                </p>
+              ) : null}
+
+              {status ? (
+                <p
+                  aria-live="polite"
+                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700"
+                >
+                  {status}
                 </p>
               ) : null}
 
@@ -300,14 +321,15 @@ export function AttendeeClient({
           )}
         </section>
 
-        <section className="space-y-3">
+        <section className="order-1 space-y-3 lg:order-2">
           <div className="flex items-end justify-between gap-3 px-1">
             <div>
               <h2 className="text-xl font-black leading-tight text-slate-950">
-                Top questions
+                Live questions
               </h2>
               <p className="mt-1 text-sm font-medium text-slate-500">
-                {sortedQuestions.length} submitted
+                {sortedQuestions.length} submitted - now answering first,
+                answered questions last
               </p>
             </div>
           </div>

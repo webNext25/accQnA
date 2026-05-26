@@ -189,10 +189,16 @@ export function AdminClient({
         }
 
         setQuestions((currentQuestions) =>
-          currentQuestions.map((question) =>
-            question.id === questionId
-              ? { ...question, is_answered: isAnswered }
-              : question,
+          sortQuestions(
+            currentQuestions.map((question) =>
+              question.id === questionId
+                ? {
+                    ...question,
+                    is_answered: isAnswered,
+                    is_pinned: isAnswered ? false : question.is_pinned,
+                  }
+                : question,
+            ),
           ),
         );
       } catch {
@@ -225,7 +231,11 @@ export function AdminClient({
           return sortQuestions(
             currentQuestions.map((question) => {
               if (question.id === questionId) {
-                return { ...question, is_pinned: isPinned };
+                return {
+                  ...question,
+                  is_answered: isPinned ? false : question.is_answered,
+                  is_pinned: isPinned,
+                };
               }
 
               if (isPinned && question.event_id === targetQuestion.event_id) {
@@ -361,6 +371,12 @@ export function AdminClient({
             ) : (
               events.map((event) => {
                 const eventQuestions = questionsByEvent.get(event.id) ?? [];
+                const liveQuestions = eventQuestions.filter(
+                  (question) => !question.is_answered,
+                );
+                const answeredQuestions = eventQuestions.filter(
+                  (question) => question.is_answered,
+                );
                 const attendeeUrl = `/${event.slug}`;
                 const presenterUrl = `/${event.slug}/present`;
 
@@ -427,16 +443,43 @@ export function AdminClient({
                           No questions for this event yet.
                         </div>
                       ) : (
-                        eventQuestions.map((question) => (
-                          <QuestionCard
-                            key={question.id}
-                            question={question}
-                            disabled={isPending}
-                            onDelete={handleDeleteQuestion}
-                            onToggleAnswered={handleToggleAnswered}
-                            onTogglePinned={handleTogglePinned}
-                          />
-                        ))
+                        <>
+                          {liveQuestions.length > 0 ? (
+                            <QuestionSectionLabel
+                              label="Live queue"
+                              count={liveQuestions.length}
+                            />
+                          ) : null}
+                          {liveQuestions.map((question) => (
+                            <QuestionCard
+                              key={question.id}
+                              question={question}
+                              disabled={isPending}
+                              onDelete={handleDeleteQuestion}
+                              onToggleAnswered={handleToggleAnswered}
+                              onTogglePinned={handleTogglePinned}
+                            />
+                          ))}
+
+                          {answeredQuestions.length > 0 ? (
+                            <div className="space-y-3 pt-2">
+                              <QuestionSectionLabel
+                                label="Answered"
+                                count={answeredQuestions.length}
+                              />
+                              {answeredQuestions.map((question) => (
+                                <QuestionCard
+                                  key={question.id}
+                                  question={question}
+                                  disabled={isPending}
+                                  onDelete={handleDeleteQuestion}
+                                  onToggleAnswered={handleToggleAnswered}
+                                  onTogglePinned={handleTogglePinned}
+                                />
+                              ))}
+                            </div>
+                          ) : null}
+                        </>
                       )}
                     </div>
                   </article>
@@ -447,6 +490,21 @@ export function AdminClient({
         </div>
       </div>
     </main>
+  );
+}
+
+function QuestionSectionLabel({
+  label,
+  count,
+}: {
+  label: string;
+  count: number;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-1 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+      <span>{label}</span>
+      <span>{count}</span>
+    </div>
   );
 }
 

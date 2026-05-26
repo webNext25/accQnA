@@ -85,4 +85,25 @@ describe("sortQuestions", () => {
       "popular",
     ]);
   });
+
+  test("moves answered questions to the end", () => {
+    const questions = [
+      question({
+        id: "answered-pinned",
+        is_answered: true,
+        is_pinned: true,
+        vote_count: 0,
+      }),
+      question({ id: "open-low-vote", vote_count: 1 }),
+      question({ id: "open-pinned", is_pinned: true, vote_count: 0 }),
+      question({ id: "answered-popular", is_answered: true, vote_count: 20 }),
+    ];
+
+    expect(sortQuestions(questions).map((item) => item.id)).toEqual([
+      "open-pinned",
+      "open-low-vote",
+      "answered-popular",
+      "answered-pinned",
+    ]);
+  });
 });

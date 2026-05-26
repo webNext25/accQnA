@@ -30,7 +30,17 @@ export function PresenterClient({
   );
 
   const sortedQuestions = useMemo(() => sortQuestions(questions), [questions]);
-  const topQuestions = sortedQuestions.slice(0, 5);
+  const currentQuestion =
+    sortedQuestions.find(
+      (question) => question.is_pinned && !question.is_answered,
+    ) ?? null;
+  const queuedQuestions = currentQuestion
+    ? sortedQuestions.filter((question) => question.id !== currentQuestion.id)
+    : sortedQuestions;
+  const openQuestionCount = sortedQuestions.filter(
+    (question) => !question.is_answered,
+  ).length;
+  const answeredQuestionCount = sortedQuestions.length - openQuestionCount;
   const eventImage = event.background_image_url
     ? `url(${JSON.stringify(event.background_image_url)})`
     : "linear-gradient(135deg, #111827, #475569)";
@@ -111,7 +121,7 @@ export function PresenterClient({
       className="event-backdrop min-h-screen bg-slate-950 px-4 py-5 text-white sm:px-6 lg:px-10 lg:py-8"
       style={{ "--event-image": eventImage } as CSSProperties}
     >
-      <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-7xl flex-col gap-5 sm:min-h-[calc(100vh-3rem)] lg:min-h-[calc(100vh-4rem)]">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
         <header className="flex flex-col gap-4 border-b border-white/18 pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-sm font-black uppercase tracking-[0.16em] text-white/72">
@@ -128,8 +138,8 @@ export function PresenterClient({
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:w-64">
-            <Stat label="Top" value={topQuestions.length} />
-            <Stat label="Total" value={sortedQuestions.length} />
+            <Stat label="Open" value={openQuestionCount} />
+            <Stat label="Answered" value={answeredQuestionCount} />
           </div>
         </header>
 
@@ -155,14 +165,14 @@ export function PresenterClient({
           </section>
         ) : null}
 
-        <section className="flex min-h-0 flex-1 flex-col">
+        <section className="flex flex-col">
           <div className="mb-3 flex items-end justify-between gap-4">
             <div>
               <h2 className="text-2xl font-black leading-tight sm:text-3xl">
-                Top questions
+                Live question queue
               </h2>
               <p className="mt-1 text-sm font-bold uppercase tracking-[0.12em] text-white/62">
-                Ranked by room votes
+                Now answering, then votes, then answered
               </p>
             </div>
             <span
@@ -176,7 +186,7 @@ export function PresenterClient({
             </span>
           </div>
 
-          {topQuestions.length === 0 ? (
+          {sortedQuestions.length === 0 ? (
             <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-white/28 bg-slate-950/35 px-5 py-14 text-center shadow-2xl shadow-slate-950/20">
               <div className="max-w-2xl">
                 <h3 className="text-3xl font-black leading-tight sm:text-5xl">
@@ -189,64 +199,120 @@ export function PresenterClient({
               </div>
             </div>
           ) : (
-            <div className="grid flex-1 auto-rows-[minmax(0,1fr)] gap-3 lg:gap-4">
-              {topQuestions.map((question, index) => (
-                <article
-                  key={question.id}
-                  className={`grid min-h-28 grid-cols-[3rem_minmax(0,1fr)_4.75rem] items-center gap-3 overflow-hidden rounded-lg border px-4 py-3 shadow-2xl shadow-slate-950/25 transition sm:min-h-32 sm:grid-cols-[4rem_minmax(0,1fr)_6rem] sm:gap-4 sm:px-5 lg:min-h-36 lg:px-6 ${
-                    question.is_answered
-                      ? "border-emerald-200/65 bg-slate-200/90 text-slate-500"
-                      : "border-white/18 bg-white/92 text-slate-950"
-                  }`}
-                >
-                  <div
-                    className={`flex aspect-square h-11 items-center justify-center rounded-lg text-xl font-black leading-none sm:h-14 sm:text-2xl ${
-                      question.is_answered
-                        ? "bg-emerald-600 text-white"
-                        : "bg-slate-950 text-white"
-                    }`}
-                  >
-                    {index + 1}
-                  </div>
+            <div className="space-y-4">
+              {currentQuestion ? (
+                <div>
+                  <p className="mb-2 text-sm font-black uppercase tracking-[0.12em] text-amber-100">
+                    Now answering
+                  </p>
+                  <PresenterQuestionCard
+                    question={currentQuestion}
+                    position={1}
+                    featured
+                  />
+                </div>
+              ) : null}
 
-                  <div className="min-w-0 overflow-hidden">
-                    {question.is_answered ? (
-                      <span className="mb-2 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-black uppercase tracking-normal text-emerald-700">
-                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                        Answered
-                      </span>
-                    ) : null}
-                    {question.is_pinned ? (
-                      <span className="mb-2 ml-2 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-black uppercase tracking-normal text-amber-700">
-                        <Pin className="h-3.5 w-3.5" aria-hidden="true" />
-                        Active
-                      </span>
-                    ) : null}
-                    <p className="line-clamp-3 text-lg font-black leading-snug break-words [overflow-wrap:anywhere] sm:text-xl lg:text-2xl xl:text-3xl">
-                      {question.body}
+              {queuedQuestions.length > 0 ? (
+                <div className="space-y-3 lg:space-y-4">
+                  {currentQuestion ? (
+                    <p className="pt-1 text-sm font-black uppercase tracking-[0.12em] text-white/58">
+                      Full queue
                     </p>
-                    <p className="mt-2 truncate text-sm font-bold text-slate-500 [overflow-wrap:anywhere] sm:text-base">
-                      {question.is_anonymous || !question.author_name
-                        ? "Anonymous"
-                        : question.author_name}
-                    </p>
-                  </div>
-
-                  <div className="justify-self-end text-right">
-                    <p className="text-3xl font-black leading-none sm:text-5xl">
-                      {question.vote_count}
-                    </p>
-                    <p className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
-                      votes
-                    </p>
-                  </div>
-                </article>
-              ))}
+                  ) : null}
+                  {queuedQuestions.map((question, index) => (
+                    <PresenterQuestionCard
+                      key={question.id}
+                      question={question}
+                      position={currentQuestion ? index + 2 : index + 1}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </div>
           )}
         </section>
       </div>
     </main>
+  );
+}
+
+function PresenterQuestionCard({
+  question,
+  position,
+  featured = false,
+}: {
+  question: Question;
+  position: number;
+  featured?: boolean;
+}) {
+  const author =
+    question.is_anonymous || !question.author_name
+      ? "Anonymous"
+      : question.author_name;
+  const isAnswered = question.is_answered;
+
+  return (
+    <article
+      className={`grid grid-cols-[3rem_minmax(0,1fr)_4.75rem] items-start gap-3 rounded-lg border px-4 py-4 shadow-2xl shadow-slate-950/25 transition sm:grid-cols-[4rem_minmax(0,1fr)_6rem] sm:gap-4 sm:px-5 lg:px-6 ${
+        isAnswered
+          ? "border-emerald-200/45 bg-slate-200/86 text-slate-500"
+          : featured
+            ? "border-amber-200/70 bg-white text-slate-950"
+            : "border-white/18 bg-white/92 text-slate-950"
+      } ${featured ? "lg:py-6" : ""}`}
+    >
+      <div
+        className={`flex aspect-square h-11 items-center justify-center rounded-lg text-xl font-black leading-none sm:h-14 sm:text-2xl ${
+          isAnswered ? "bg-emerald-600 text-white" : "bg-slate-950 text-white"
+        }`}
+      >
+        {position}
+      </div>
+
+      <div className="min-w-0">
+        <div className="mb-2 flex flex-wrap gap-2">
+          {isAnswered ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-black uppercase tracking-normal text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Answered
+            </span>
+          ) : null}
+          {question.is_pinned && !isAnswered ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-black uppercase tracking-normal text-amber-700">
+              <Pin className="h-3.5 w-3.5" aria-hidden="true" />
+              Now answering
+            </span>
+          ) : null}
+        </div>
+
+        <p
+          className={`font-black leading-snug break-words [overflow-wrap:anywhere] ${
+            featured
+              ? "text-2xl sm:text-3xl lg:text-5xl"
+              : "text-lg sm:text-xl lg:text-3xl"
+          }`}
+        >
+          {question.body}
+        </p>
+        <p className="mt-3 text-sm font-bold text-slate-500 [overflow-wrap:anywhere] sm:text-base">
+          {author}
+        </p>
+      </div>
+
+      <div className="justify-self-end text-right">
+        <p
+          className={`font-black leading-none ${
+            featured ? "text-4xl sm:text-6xl" : "text-3xl sm:text-5xl"
+          }`}
+        >
+          {question.vote_count}
+        </p>
+        <p className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+          votes
+        </p>
+      </div>
+    </article>
   );
 }
 

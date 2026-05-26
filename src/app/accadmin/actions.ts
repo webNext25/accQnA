@@ -109,7 +109,10 @@ export async function setQuestionAnswered(
   const supabase = createServerSupabase();
   const { error } = await supabase
     .from("questions")
-    .update({ is_answered: isAnswered })
+    .update({
+      is_answered: isAnswered,
+      ...(isAnswered ? { is_pinned: false } : {}),
+    })
     .eq("id", questionId);
 
   if (error) {
@@ -177,7 +180,7 @@ export async function setQuestionPinned(
 
   const { error: pinError } = await supabase
     .from("questions")
-    .update({ is_pinned: true })
+    .update({ is_answered: false, is_pinned: true })
     .eq("id", questionId);
 
   if (pinError) {

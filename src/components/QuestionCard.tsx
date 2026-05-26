@@ -26,7 +26,7 @@ export function QuestionCard({
     question.is_anonymous || !question.author_name
       ? "Anonymous"
       : question.author_name;
-  const upvoteDisabled = disabled || voted || !onUpvote;
+  const upvoteDisabled = disabled || voted || question.is_answered || !onUpvote;
   const handleDelete = () => {
     if (window.confirm("Delete this question?")) {
       onDelete?.(question.id);
@@ -34,7 +34,13 @@ export function QuestionCard({
   };
 
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-950/[0.03]">
+    <article
+      className={`rounded-lg border p-4 shadow-sm shadow-slate-950/[0.03] ${
+        question.is_answered
+          ? "border-slate-200 bg-slate-50/80"
+          : "border-slate-200 bg-white"
+      }`}
+    >
       <div className="flex gap-3">
         <button
           type="button"
@@ -62,10 +68,10 @@ export function QuestionCard({
                 Answered
               </span>
             ) : null}
-            {question.is_pinned ? (
+            {question.is_pinned && !question.is_answered ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-black text-amber-700">
                 <Pin className="h-3.5 w-3.5" aria-hidden="true" />
-                Pinned
+                Now answering
               </span>
             ) : null}
           </div>

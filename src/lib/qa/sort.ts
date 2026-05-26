@@ -4,7 +4,15 @@ export function sortQuestions(questions: Question[]): Question[] {
   return questions
     .filter((question) => question.deleted_at === null)
     .sort((left, right) => {
-      if (left.is_pinned !== right.is_pinned) {
+      if (left.is_answered !== right.is_answered) {
+        return left.is_answered ? 1 : -1;
+      }
+
+      if (
+        !left.is_answered &&
+        !right.is_answered &&
+        left.is_pinned !== right.is_pinned
+      ) {
         return left.is_pinned ? -1 : 1;
       }
 
