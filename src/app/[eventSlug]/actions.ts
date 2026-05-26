@@ -89,6 +89,7 @@ export async function upvoteQuestion({
     .select("id")
     .eq("id", questionId)
     .eq("event_id", eventId)
+    .eq("is_answered", false)
     .is("deleted_at", null)
     .maybeSingle();
 

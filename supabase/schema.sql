@@ -30,6 +30,9 @@ add column if not exists is_answered boolean not null default false;
 alter table public.questions
 add column if not exists is_pinned boolean not null default false;
 
+alter table public.questions
+add column if not exists deleted_at timestamptz;
+
 create table if not exists public.question_votes (
   id uuid primary key default gen_random_uuid(),
   question_id uuid not null references public.questions(id) on delete cascade,

@@ -2,9 +2,17 @@
 
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Pin } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Maximize2,
+  Minimize2,
+  Pin,
+} from "lucide-react";
 
+import { getActiveQuestion } from "@/lib/qa/queue";
 import { sortQuestions } from "@/lib/qa/sort";
+import { loadEventSnapshot } from "@/lib/qa/snapshot";
 import type { Event, Question } from "@/lib/qa/types";
 import { subscribeToEvent } from "@/lib/qa/realtime";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
@@ -28,12 +36,10 @@ export function PresenterClient({
   const [questions, setQuestions] = useState(() =>
     sortQuestions(initialQuestions),
   );
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const sortedQuestions = useMemo(() => sortQuestions(questions), [questions]);
-  const currentQuestion =
-    sortedQuestions.find(
-      (question) => question.is_pinned && !question.is_answered,
-    ) ?? null;
+  const currentQuestion = getActiveQuestion(sortedQuestions);
   const queuedQuestions = currentQuestion
     ? sortedQuestions.filter((question) => question.id !== currentQuestion.id)
     : sortedQuestions;
@@ -116,6 +122,57 @@ export function PresenterClient({
     }
   }, [event.id]);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const supabase = createBrowserSupabase();
+    let cancelled = false;
+
+    const refreshSnapshot = async () => {
+      const snapshot = await loadEventSnapshot(supabase, event.id);
+
+      if (cancelled || snapshot.error) {
+        return;
+      }
+
+      if (snapshot.event) {
+        setEvent(snapshot.event);
+      }
+
+      setQuestions(snapshot.questions);
+    };
+
+    const intervalId = window.setInterval(refreshSnapshot, 12000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [event.id]);
+
+  const handleToggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await document.documentElement.requestFullscreen();
+    } catch {
+      return;
+    }
+  };
+
   return (
     <main
       className="event-backdrop min-h-screen bg-slate-950 px-4 py-5 text-white sm:px-6 lg:px-10 lg:py-8"
@@ -137,9 +194,23 @@ export function PresenterClient({
             ) : null}
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:w-64">
-            <Stat label="Open" value={openQuestionCount} />
-            <Stat label="Answered" value={answeredQuestionCount} />
+          <div className="flex flex-col gap-2 sm:w-72">
+            <div className="grid grid-cols-2 gap-2">
+              <Stat label="Open" value={openQuestionCount} />
+              <Stat label="Answered" value={answeredQuestionCount} />
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleToggleFullscreen()}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-white/18 bg-white/12 px-3 text-sm font-black text-white transition hover:bg-white/18 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Maximize2 className="h-4 w-4" aria-hidden="true" />
+              )}
+              {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            </button>
           </div>
         </header>
 

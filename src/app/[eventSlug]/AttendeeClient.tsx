@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { EventHero } from "@/components/EventHero";
 import { QuestionCard } from "@/components/QuestionCard";
 import { sortQuestions } from "@/lib/qa/sort";
+import { loadEventSnapshot } from "@/lib/qa/snapshot";
 import type { Event, Question } from "@/lib/qa/types";
 import {
   getVoterId,
@@ -49,7 +50,8 @@ export function AttendeeClient({
   const [pendingVoteIds, setPendingVoteIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, startSubmitTransition] = useTransition();
+  const [, startVoteTransition] = useTransition();
 
   const remainingCharacters = 280 - body.length;
   const isClosed = !event.is_open;
@@ -105,6 +107,32 @@ export function AttendeeClient({
     });
   }, [event.id]);
 
+  useEffect(() => {
+    const supabase = createBrowserSupabase();
+    let cancelled = false;
+
+    const refreshSnapshot = async () => {
+      const snapshot = await loadEventSnapshot(supabase, event.id);
+
+      if (cancelled || snapshot.error) {
+        return;
+      }
+
+      if (snapshot.event) {
+        setEvent(snapshot.event);
+      }
+
+      setQuestions(snapshot.questions);
+    };
+
+    const intervalId = window.setInterval(refreshSnapshot, 12000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [event.id]);
+
   const handleSubmit = (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
 
@@ -115,7 +143,7 @@ export function AttendeeClient({
 
     setError(null);
     setStatus(null);
-    startTransition(async () => {
+    startSubmitTransition(async () => {
       try {
         const result = await submitQuestion({
           eventId: event.id,
@@ -154,7 +182,7 @@ export function AttendeeClient({
     setError(null);
     setPendingVoteIds((currentIds) => new Set(currentIds).add(questionId));
 
-    startTransition(async () => {
+    startVoteTransition(async () => {
       try {
         const voterId = safeGetVoterId();
         const result = await upvoteQuestion({
@@ -311,11 +339,11 @@ export function AttendeeClient({
 
               <button
                 type="submit"
-                disabled={isPending || body.trim().length === 0}
+                disabled={isSubmitting || body.trim().length === 0}
                 className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-base font-black text-white transition hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Send className="h-5 w-5" aria-hidden="true" />
-                {isPending ? "Sending" : "Send question"}
+                {isSubmitting ? "Sending" : "Send question"}
               </button>
             </form>
           )}

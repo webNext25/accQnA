@@ -28,7 +28,7 @@ export function QuestionCard({
       : question.author_name;
   const upvoteDisabled = disabled || voted || question.is_answered || !onUpvote;
   const handleDelete = () => {
-    if (window.confirm("Delete this question?")) {
+    if (window.confirm("Hide this question from the live screens?")) {
       onDelete?.(question.id);
     }
   };
@@ -111,7 +111,7 @@ export function QuestionCard({
               disabled={disabled}
               className="rounded-md px-2 py-1 text-sm font-bold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Delete
+              Hide
             </button>
           ) : null}
         </div>

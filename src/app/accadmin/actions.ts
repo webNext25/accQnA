@@ -1,8 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
-import type { ActionResult, Event } from "@/lib/qa/types";
+import {
+  clearAdminSession,
+  isAdminAuthenticated,
+  isAdminPasscode,
+  setAdminSession,
+} from "@/lib/admin/auth";
+import { getAdvanceQuestionPlan } from "@/lib/qa/queue";
+import { sortQuestions } from "@/lib/qa/sort";
+import type { ActionResult, Event, Question } from "@/lib/qa/types";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 type CreateEventInput = {
@@ -12,12 +21,34 @@ type CreateEventInput = {
   backgroundImageUrl: string;
 };
 
+export async function loginAdmin(formData: FormData): Promise<void> {
+  const passcode = String(formData.get("passcode") ?? "");
+
+  if (!isAdminPasscode(passcode)) {
+    redirect("/accadmin?error=1");
+  }
+
+  await setAdminSession();
+  redirect("/accadmin");
+}
+
+export async function logoutAdmin(): Promise<void> {
+  await clearAdminSession();
+  redirect("/accadmin");
+}
+
 export async function createEvent({
   title,
   subtitle,
   slug,
   backgroundImageUrl,
 }: CreateEventInput): Promise<ActionResult<Event>> {
+  const unauthorized = await requireAdminAction<Event>();
+
+  if (unauthorized) {
+    return unauthorized;
+  }
+
   const normalizedTitle = title.trim();
   const normalizedSlug = normalizeSlug(slug || title);
 
@@ -64,6 +95,12 @@ export async function setEventOpen(
   eventId: string,
   isOpen: boolean,
 ): Promise<ActionResult> {
+  const unauthorized = await requireAdminAction();
+
+  if (unauthorized) {
+    return unauthorized;
+  }
+
   const supabase = createServerSupabase();
   const { error } = await supabase
     .from("events")
@@ -87,8 +124,17 @@ export async function setEventOpen(
 export async function deleteQuestion(
   questionId: string,
 ): Promise<ActionResult> {
+  const unauthorized = await requireAdminAction();
+
+  if (unauthorized) {
+    return unauthorized;
+  }
+
   const supabase = createServerSupabase();
-  const { error } = await supabase.from("questions").delete().eq("id", questionId);
+  const { error } = await supabase
+    .from("questions")
+    .update({ deleted_at: new Date().toISOString(), is_pinned: false })
+    .eq("id", questionId);
 
   if (error) {
     return {
@@ -106,6 +152,12 @@ export async function setQuestionAnswered(
   questionId: string,
   isAnswered: boolean,
 ): Promise<ActionResult> {
+  const unauthorized = await requireAdminAction();
+
+  if (unauthorized) {
+    return unauthorized;
+  }
+
   const supabase = createServerSupabase();
   const { error } = await supabase
     .from("questions")
@@ -133,6 +185,12 @@ export async function setQuestionPinned(
   questionId: string,
   isPinned: boolean,
 ): Promise<ActionResult> {
+  const unauthorized = await requireAdminAction();
+
+  if (unauthorized) {
+    return unauthorized;
+  }
+
   const supabase = createServerSupabase();
 
   if (!isPinned) {
@@ -193,6 +251,110 @@ export async function setQuestionPinned(
   revalidatePath("/accadmin");
 
   return { ok: true, data: undefined };
+}
+
+export async function advanceQuestion(
+  eventId: string,
+): Promise<ActionResult<Question[]>> {
+  const unauthorized = await requireAdminAction<Question[]>();
+
+  if (unauthorized) {
+    return unauthorized;
+  }
+
+  const supabase = createServerSupabase();
+  const { data: questions, error: questionError } = await supabase
+    .from("questions")
+    .select("*")
+    .eq("event_id", eventId)
+    .is("deleted_at", null);
+
+  if (questionError) {
+    return {
+      ok: false,
+      error: "We could not load the question queue. Please try again.",
+    };
+  }
+
+  const plan = getAdvanceQuestionPlan((questions ?? []) as Question[]);
+
+  if (!plan.answerQuestionId && !plan.pinQuestionId) {
+    return { ok: true, data: [] };
+  }
+
+  if (plan.answerQuestionId) {
+    const { error } = await supabase
+      .from("questions")
+      .update({ is_answered: true, is_pinned: false })
+      .eq("id", plan.answerQuestionId)
+      .eq("event_id", eventId);
+
+    if (error) {
+      return {
+        ok: false,
+        error: "We could not advance the question queue. Please try again.",
+      };
+    }
+  }
+
+  if (plan.pinQuestionId) {
+    const { error: clearError } = await supabase
+      .from("questions")
+      .update({ is_pinned: false })
+      .eq("event_id", eventId)
+      .eq("is_pinned", true);
+
+    if (clearError) {
+      return {
+        ok: false,
+        error: "We could not advance the question queue. Please try again.",
+      };
+    }
+
+    const { error: pinError } = await supabase
+      .from("questions")
+      .update({ is_answered: false, is_pinned: true })
+      .eq("id", plan.pinQuestionId)
+      .eq("event_id", eventId);
+
+    if (pinError) {
+      return {
+        ok: false,
+        error: "We could not advance the question queue. Please try again.",
+      };
+    }
+  }
+
+  const { data: nextQuestions, error: nextQuestionError } = await supabase
+    .from("questions")
+    .select("*")
+    .eq("event_id", eventId)
+    .is("deleted_at", null);
+
+  if (nextQuestionError) {
+    return {
+      ok: false,
+      error:
+        "The queue advanced, but the latest questions could not refresh yet.",
+    };
+  }
+
+  revalidatePath("/accadmin");
+
+  return { ok: true, data: sortQuestions((nextQuestions ?? []) as Question[]) };
+}
+
+async function requireAdminAction<T = undefined>(): Promise<
+  ActionResult<T> | null
+> {
+  if (await isAdminAuthenticated()) {
+    return null;
+  }
+
+  return {
+    ok: false,
+    error: "Admin passcode required. Refresh the admin page and sign in again.",
+  };
 }
 
 function blankToNull(value: string): string | null {
